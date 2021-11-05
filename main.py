@@ -54,11 +54,8 @@ def main():
                            "travelTime": float(travel_time_between_stations)}
 
                 reinitialize_state(configD)
-                col2.markdown("<h2 style='text-align: center; color: Black;'>Processing Details</h2>",
-                              unsafe_allow_html=True)
+                col2.header("Processing Details")
                 file_details = {"Filename": data_file.name, "FileType": data_file.type, "FileSize": data_file.size}
-                # col2.write("File Details:")
-                # col2.write(file_details)
                 df = pd.read_csv(data_file)
                 col2.write("Sample Data:")
                 col2.dataframe(df.head())
@@ -98,21 +95,21 @@ def main():
                 st.write(str(st.session_state["config"]))
 
             col1, col2 = st.columns((1, 1))
-            col1.markdown("<h2 style='text-align: center; color: Black;'>Route Analysis</h2>", unsafe_allow_html=True)
-            col2.markdown("<h2 style='text-align: center; color: Black;'>Analysis Results</h2>", unsafe_allow_html=True)
+
+            col1.write("### Route Analysis")
+            col2.write("### Optimization Results")
 
             routing_results = st.session_state["final_results"]['route_results']
 
             option = col1.selectbox('Choose Route', routing_results["route_name"])
 
-            col1.subheader("Before Optimization:")
-            col1.write("## " + str(routing_results[routing_results["route_name"] == str(option)].iloc[0]["before_opt"]))
+            col1.write("#### Before Optimization:")
+            col1.write("##### " + str(routing_results[routing_results["route_name"] == str(option)].iloc[0]["before_opt"]))
 
-            col1.subheader("After Optimization:")
-            col1.write("## " + str(routing_results[routing_results["route_name"] == str(option)].iloc[0]["after_opt"]))
+            col1.write("#### After Optimization:")
+            col1.write("##### " + str(routing_results[routing_results["route_name"] == str(option)].iloc[0]["after_opt"]))
 
-            col1.markdown("<h2 style='text-align: center; color: Black;'>Download Optimization Results</h2>",
-                          unsafe_allow_html=True)
+            col1.write("### Download Optimization Results")
 
             with open(st.session_state["final_results"]['output1'], "rb") as fp:
                 btn = col1.download_button(
