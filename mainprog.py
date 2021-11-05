@@ -27,7 +27,7 @@ def computeThis(queue, configD):
     os.makedirs(Intermediate_directory, exist_ok=True)
     os.makedirs(Results_directory, exist_ok=True)
 
-    time.sleep(5)
+    time.sleep(3)
 
     df = configD['attachment']
 
@@ -39,7 +39,7 @@ def computeThis(queue, configD):
     max_travel_time_allowed = configD["travelTime"]
     max_running_time = configD["maxRunning"]
 
-    time.sleep(5)
+    time.sleep(4)
 
     d2 = 1
     if d2 == 0:

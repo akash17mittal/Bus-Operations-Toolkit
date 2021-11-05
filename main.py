@@ -30,18 +30,22 @@ def main():
 
     app_page = st.sidebar.selectbox('Choose Menu', ('Home', 'Results'))
 
+    st.sidebar.image("./images/busopt.jpg")
+
     if app_page == 'Home':
         # Title the app
         st.title("Bus Operations Toolkit ")
 
         col1, col2 = st.columns((1, 1))
 
-        data_file = col1.file_uploader("Upload Current FORM-IV", type=['csv'], key="uploaded_file")
-        minimum_safety_headway = col1.text_input("Minimum Safety Headway (in minutes)", key="minimum_safety_headway")
-        max_running_time_bus = col1.text_input("Max Running Time of Bus (in hours)", key="max_running_time_bus")
-        travel_time_between_stations = col1.text_input("Travel Time between Stations (in hours)", key="travel_time")
+        opt_params_form = col1.form(key='opt_params')
+        data_file = opt_params_form.file_uploader("Upload Current FORM-IV", type=['csv'])
+        minimum_safety_headway = opt_params_form.number_input("Minimum Safety Headway (in minutes)", step=1)
+        max_running_time_bus = opt_params_form.number_input("Max Running Time of Bus (in hours)", step=1)
+        travel_time_between_stations = opt_params_form.number_input("Travel Time between Stations (in hours)", step=1)
+        solve = opt_params_form.form_submit_button('Solve')
 
-        if st.button("Solve"):
+        if solve:
             if data_file is not None:
 
                 configD = {"file_details": data_file.name,
@@ -53,8 +57,8 @@ def main():
                 col2.markdown("<h2 style='text-align: center; color: Black;'>Processing Details</h2>",
                               unsafe_allow_html=True)
                 file_details = {"Filename": data_file.name, "FileType": data_file.type, "FileSize": data_file.size}
-                col2.write("File Details:")
-                col2.write(file_details)
+                # col2.write("File Details:")
+                # col2.write(file_details)
                 df = pd.read_csv(data_file)
                 col2.write("Sample Data:")
                 col2.dataframe(df.head())
