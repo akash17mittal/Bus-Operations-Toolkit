@@ -7,7 +7,12 @@ import base64
 import time
 
 
-def process_queue_message(col1, col2, col3, value):
+def reinitialize_state(configuration):
+    st.session_state.pop("final_results", None)
+    st.session_state["config"] = configuration.copy()
+
+
+def process_queue_message(col, value):
     # -- Allow data download
     if value[0] == "intermediate_file_created":
         df = pd.read_excel(value[1])
@@ -15,7 +20,7 @@ def process_queue_message(col1, col2, col3, value):
         b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
         fn = value[1].split('/')[-1]
         href = f'<a href="data:file/csv;base64,{b64}" download="{fn}">Download Intermediate Data as CSV File</a>'
-        col1.markdown(href, unsafe_allow_html=True)
+        col.markdown(href, unsafe_allow_html=True)
 
 
 def main():
@@ -23,73 +28,107 @@ def main():
 
     st.set_page_config(page_title=apptitle, page_icon=":bus:", layout="wide")
 
-    # Title the app
-    st.markdown("<h1 style='text-align: center; color: Black;'>Bus Operations Toolkit</h1>", unsafe_allow_html=True)
+    app_page = st.sidebar.selectbox('Choose Menu', ('Home', 'Results'))
 
-    st.sidebar.title("Choose Configuration ")
+    if app_page == 'Home':
+        # Title the app
+        st.title("Bus Operations Toolkit ")
 
-    data_file = st.sidebar.file_uploader("Upload Current FORM-IV", type=['csv'])
-    minimum_safety_headway = st.sidebar.text_input("Minimum Safety Headway (in minutes)", 5)
-    max_running_time_bus = st.sidebar.text_input("Max Running Time of Bus (in hours)", 16)
-    travel_time_between_stations = st.sidebar.text_input("Travel Time between Stations (in hours)", 1)
+        col1, col2 = st.columns((1, 1))
 
-    col1, col2, col3 = st.columns((1, 1, 1))
+        data_file = col1.file_uploader("Upload Current FORM-IV", type=['csv'], key="uploaded_file")
+        minimum_safety_headway = col1.text_input("Minimum Safety Headway (in minutes)", key="minimum_safety_headway")
+        max_running_time_bus = col1.text_input("Max Running Time of Bus (in hours)", key="max_running_time_bus")
+        travel_time_between_stations = col1.text_input("Travel Time between Stations (in hours)", key="travel_time")
 
-    col1.markdown("<h2 style='text-align: center; color: Black;'>Processing Details</h2>", unsafe_allow_html=True)
-    col2.markdown("<h2 style='text-align: center; color: Black;'>Route Analysis</h2>", unsafe_allow_html=True)
-    col3.markdown("<h2 style='text-align: center; color: Black;'>Analysis Results</h2>", unsafe_allow_html=True)
+        if st.button("Solve"):
+            if data_file is not None:
 
-    if st.sidebar.button("Process"):
-        if data_file is not None:
-            file_details = {"Filename": data_file.name, "FileType": data_file.type, "FileSize": data_file.size}
-            col1.write("File Details:")
-            col1.write(file_details)
+                configD = {"file_details": data_file.name,
+                           "maxDelay": float(minimum_safety_headway),
+                           "maxRunning": float(max_running_time_bus),
+                           "travelTime": float(travel_time_between_stations)}
 
-            df = pd.read_csv(data_file)
+                reinitialize_state(configD)
+                col2.markdown("<h2 style='text-align: center; color: Black;'>Processing Details</h2>",
+                              unsafe_allow_html=True)
+                file_details = {"Filename": data_file.name, "FileType": data_file.type, "FileSize": data_file.size}
+                col2.write("File Details:")
+                col2.write(file_details)
+                df = pd.read_csv(data_file)
+                col2.write("Sample Data:")
+                col2.dataframe(df.head())
+                configD["attachment"] = df
+                q = Queue()
+                pr = Process(target=computeThis, args=(q, configD))
+                pr.start()
 
-            col1.write("Sample Data:")
-            col1.dataframe(df.head())
+                col2.write("Process Started...")
 
-            configD = {"attachment": df,
-                       "maxDelay": float(minimum_safety_headway),
-                       "maxRunning": float(max_running_time_bus),
-                       "travelTime": float(travel_time_between_stations)}
+                progress_value = 5
 
-            q = Queue()
-            pr = Process(target=computeThis, args=(q, configD))
-            pr.start()
+                progress_bar = col2.progress(progress_value)
 
-            col1.write("Process Started...")
-
-            progress_value = 5
-
-            progress_bar = col1.progress(progress_value)
-
-            while True:
-                if not q.empty():
-                    value = q.get(True)
-                    progress_bar.progress(progress_value + 10)
-                    if value[0] == "Done":
-                        progress_bar.progress(100)
-
-                        option = col2.selectbox('Choose Route', value[1]["route_name"])
-
-                        col2.subheader("Before Optimization:")
-                        col2.write(value[1][value[1]["route_name"] == str(option)].iloc[0]["before_opt"])
-
-                        col2.subheader("After Optimization:")
-                        col2.write(value[1][value[1]["route_name"] == str(option)].iloc[0]["after_opt"])
-
-                        # Plot the analysis results
-                        col3.pyplot(value[2])
-                        col3.pyplot(value[3])
-                        break
+                while True:
+                    if not q.empty():
+                        value = q.get(True)
+                        progress_bar.progress(progress_value + 10)
+                        if value[0] == "Done":
+                            progress_bar.progress(100)
+                            st.session_state["final_results"] = value[1]
+                            col2.write("## Optimization Finished")
+                            col2.write("Check Results!")
+                            break
+                        else:
+                            process_queue_message(col2, value)
                     else:
-                        process_queue_message(col1, col2, col3, value)
-                else:
-                    time.sleep(1)
+                        time.sleep(1)
 
-            pr.join()
+                pr.join()
+
+    else:
+        if 'final_results' in st.session_state:
+
+            if 'config' in st.session_state:
+                st.write("## Optimization Parameters")
+                st.write(str(st.session_state["config"]))
+
+            col1, col2 = st.columns((1, 1))
+            col1.markdown("<h2 style='text-align: center; color: Black;'>Route Analysis</h2>", unsafe_allow_html=True)
+            col2.markdown("<h2 style='text-align: center; color: Black;'>Analysis Results</h2>", unsafe_allow_html=True)
+
+            routing_results = st.session_state["final_results"]['route_results']
+
+            option = col1.selectbox('Choose Route', routing_results["route_name"])
+
+            col1.subheader("Before Optimization:")
+            col1.write("## " + str(routing_results[routing_results["route_name"] == str(option)].iloc[0]["before_opt"]))
+
+            col1.subheader("After Optimization:")
+            col1.write("## " + str(routing_results[routing_results["route_name"] == str(option)].iloc[0]["after_opt"]))
+
+            col1.markdown("<h2 style='text-align: center; color: Black;'>Download Optimization Results</h2>",
+                          unsafe_allow_html=True)
+
+            with open(st.session_state["final_results"]['output1'], "rb") as fp:
+                btn = col1.download_button(
+                    label="Download Intermediate Analysis Results",
+                    data=fp,
+                    file_name=st.session_state["final_results"]['output1'].split('/')[-1],
+                    mime="application/zip"
+                )
+
+            with open(st.session_state["final_results"]['output2'], "rb") as fp:
+                btn2 = col1.download_button(
+                    label="Download Final Results",
+                    data=fp,
+                    file_name=st.session_state["final_results"]['output2'].split('/')[-1],
+                    mime="application/zip"
+                )
+
+            # Plot the analysis results
+            col2.bar_chart(st.session_state["final_results"]["plot1"])
+            col2.bar_chart(st.session_state["final_results"]["plot2"])
 
 
 if __name__ == '__main__':
