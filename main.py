@@ -54,6 +54,9 @@ def main():
                            "travelTime": float(travel_time_between_stations)}
 
                 reinitialize_state(configD)
+
+                st.session_state["app_status"] = "running"
+
                 col2.header("Processing Details")
                 file_details = {"Filename": data_file.name, "FileType": data_file.type, "FileSize": data_file.size}
                 df = pd.read_csv(data_file)
@@ -86,6 +89,14 @@ def main():
                         time.sleep(1)
 
                 pr.join()
+                st.experimental_rerun()
+
+        if "final_results" in st.session_state:
+            col2.header("Results")
+
+            # background = Image.open()
+            col2.image("images/firstcircle.png", use_column_width=True, output_format="PNG")
+            # col2.image(st.session_state["final_results"]["plot1"])
 
     else:
         if 'final_results' in st.session_state:
