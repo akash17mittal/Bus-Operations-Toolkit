@@ -88,7 +88,7 @@ def computeThis(queue, configD):
     text_origin = (int(CENTER[0] - text_size[0] / 2), int(CENTER[1] + text_size[1] / 2))
     sample = cv2.putText(sample, TEXT, text_origin, TEXT_FACE, TEXT_SCALE, TEXT_COLOR, TEXT_THICKNESS, cv2.LINE_AA)
 
-    cv2.imwrite("images/firstcircle.png", sample)
+    sample = sample/255.0
 
     final_results = {'route_results': route_results,
                      'output1': f"{os.path.join(root, o1Filename)}.zip",

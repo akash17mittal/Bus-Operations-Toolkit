@@ -93,10 +93,7 @@ def main():
 
         if "final_results" in st.session_state:
             col2.header("Results")
-
-            # background = Image.open()
-            col2.image("images/firstcircle.png", use_column_width=True, output_format="PNG")
-            # col2.image(st.session_state["final_results"]["plot1"])
+            col2.image(st.session_state["final_results"]["plot1"],  use_column_width=True, output_format="PNG")
 
     else:
         if 'final_results' in st.session_state:
